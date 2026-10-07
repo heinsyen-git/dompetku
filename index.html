@@ -28,7 +28,13 @@ body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Plus Jakarta 
 .num{font-variant-numeric:tabular-nums}
 .wrap{max-width:560px;margin:0 auto;padding:16px 16px 110px}
 header.top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin:4px 2px 14px}
-.hbtns{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;max-width:62%}
+.hbtns{display:flex;gap:6px;align-items:center}
+.menuwrap{position:relative}
+#moreBtn{font-size:18px;line-height:1;padding:5px 12px}
+.menu{position:absolute;right:0;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.14);padding:6px;min-width:190px;z-index:15}
+.menu button{all:unset;cursor:pointer;display:block;width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;font-size:14px;font-weight:600}
+.menu button:hover{background:var(--sunk)}
+.menu button.danger{color:var(--bad)}
 header.top h1{font-size:20px;font-weight:800;letter-spacing:-.02em;margin:0}
 .sync{font-size:12px;color:var(--muted);display:block}
 .tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--sunk);border:1px solid var(--line);border-radius:14px;padding:4px;gap:4px;margin-bottom:16px}
@@ -120,6 +126,12 @@ h2{font-size:15px;font-weight:700;margin:20px 2px 8px}
 .toast.show{opacity:1}
 .loginbox{text-align:center;padding:18vh 12px 0}.loginbox .logo{font-size:52px}.loginbox h1{font-size:26px;font-weight:800;margin:6px 0}.loginbox p{color:var(--muted);margin:0 0 22px}.loginbox button{border:0;cursor:pointer;font:700 16px "Plus Jakarta Sans",system-ui,sans-serif;padding:14px 26px;border-radius:12px}
 [hidden]{display:none!important}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;padding:0 6px;border-radius:5px;background:var(--warn-bg);color:var(--warn);vertical-align:1px}
+.chips button[aria-pressed="true"] .tag{background:transparent;color:inherit;border:1px solid currentColor}
+a.calbtn{all:unset;cursor:pointer;font-size:12.5px;font-weight:600;padding:5px 10px;border-radius:8px;border:1px solid var(--line);color:var(--brand)}
+.sec{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:4px 2px 10px}
+.inputcard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px}
+.inputcard h3{margin:0 0 14px;font-size:18px}
 .hint{font-size:12.5px;color:var(--muted);margin-top:4px}
 </style>
 </head>
@@ -128,12 +140,21 @@ h2{font-size:15px;font-weight:700;margin:20px 2px 8px}
   <div class="loginbox"><div class="logo">💰</div><h1>Dompet Rapi</h1><p>Catat hutang dan pengeluaran, tersinkron di semua perangkat Anda.</p><button class="primary" id="loginBtn">Masuk dengan Google</button></div>
 </div>
 <div class="wrap" id="app" hidden>
-  <header class="top"><div><h1>Dompet Rapi</h1><span class="sync" id="sync"></span></div><div class="hbtns"><button class="ghost" id="exportBtn">Ekspor ke Excel</button><button class="ghost" id="backupBtn">Backup data (JSON)</button><button class="ghost" id="importBtn">Impor backup</button><button class="ghost" id="logoutBtn">Keluar</button><input type="file" id="importFile" accept=".json,application/json" hidden></div></header>
+  <header class="top"><div><h1>Dompet Rapi</h1><span class="sync" id="sync"></span></div><div class="hbtns"><button class="ghost" id="exportBtn">Ekspor ke Excel</button>
+    <div class="menuwrap"><button class="ghost" id="moreBtn" aria-haspopup="true" aria-expanded="false" aria-label="Menu lainnya">⋮</button>
+      <div class="menu" id="moreMenu" hidden>
+        <button id="budgetBtn">💵 Atur anggaran bulanan</button>
+        <button id="notifBtn">🔔 Aktifkan notifikasi</button>
+        <button id="backupBtn">Backup data (JSON)</button>
+        <button id="importBtn">Impor backup</button>
+        <button id="logoutBtn" class="danger">Keluar</button>
+      </div></div>
+    <input type="file" id="importFile" accept=".json,application/json" hidden></div></header>
   <div class="tabs" role="tablist">
-    <button role="tab" id="tab-debt" aria-selected="true">Hutang<span class="dot" id="dueBadge" hidden></span></button>
-    <button role="tab" id="tab-exp" aria-selected="false">Pengeluaran</button>
+    <button role="tab" id="tab-debt" aria-selected="true">Dashboard<span class="dot" id="dueBadge" hidden></span></button>
+    <button role="tab" id="tab-exp" aria-selected="false">+ Input Pengeluaran</button>
   </div>
-  <section id="view-debt"></section>
+  <section id="view-debt"><div id="dash-debt"></div><div id="dash-exp"></div></section>
   <section id="view-exp" hidden></section>
 </div>
 <button class="fab" id="fab" hidden>+ Catat hutang</button>
@@ -151,6 +172,14 @@ const CATS=[
   {id:'pulsa',n:'Pulsa & internet',c:'#2AA198'},{id:'hiburan',n:'Hiburan',c:'#D4A017'},
   {id:'kesehatan',n:'Kesehatan',c:'#4C9F5A'},{id:'keluarga',n:'Keluarga & sosial',c:'#8A6D5A'},
   {id:'lain',n:'Lainnya',c:'#7D8B89'}];
+const METHODS=[
+  {id:'tunai',n:'Tunai',k:'cash'},{id:'debit',n:'Debit / Transfer',k:'cash'},{id:'qris',n:'QRIS',k:'cash'},
+  {id:'gopay',n:'GoPay',k:'ewallet'},{id:'ovo',n:'OVO',k:'ewallet'},{id:'dana',n:'DANA',k:'ewallet'},{id:'shopeepay',n:'ShopeePay',k:'ewallet'},
+  {id:'kk',n:'Kartu kredit',k:'credit'},{id:'spaylater',n:'SPayLater',k:'credit'},{id:'gopaylater',n:'GoPayLater',k:'credit'},
+  {id:'kredivo',n:'Kredivo',k:'credit'},{id:'akulaku',n:'Akulaku',k:'credit'},{id:'lain',n:'Lainnya',k:'cash'}];
+const methodOf=id=>METHODS.find(m=>m.id===id);
+const methodLabel=x=>!x.method?'Tidak dicatat':(x.method==='lain'&&x.methodName?x.methodName:(methodOf(x.method)||{n:x.method}).n);
+const isCredit=x=>!!(methodOf(x.method)&&methodOf(x.method).k==='credit')||!!x.methodCredit;
 const catOf=id=>CATS.find(c=>c.id===id)||CATS[CATS.length-1];
 const BULAN=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 const BLN=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
@@ -195,7 +224,7 @@ async function saveKey(k,v){
 }
 async function loadAll(){
   const d=await loadKey('debts'); state.debts=(d&&d.items)||[];
-  const s=await loadKey('settings'); state.budget=(s&&s.budget)||0;
+  const s=await loadKey('settings'); state.budget=(s&&s.budget)||0; state.lastMethod=(s&&s.lastMethod)||'tunai';
   state.months={}; await ensureMonth(curMonth);
 }
 async function ensureMonth(m){
@@ -203,7 +232,7 @@ async function ensureMonth(m){
   const e=await loadKey('exp-'+m); state.months[m]=(e&&e.items)||[];
 }
 const saveDebts=()=>saveKey('debts',{items:state.debts,updatedAt:Date.now()});
-const saveSettings=()=>saveKey('settings',{budget:state.budget,updatedAt:Date.now()});
+const saveSettings=()=>saveKey('settings',{budget:state.budget,lastMethod:state.lastMethod||'tunai',updatedAt:Date.now()});
 const saveMonth=m=>saveKey('exp-'+m,{items:state.months[m]||[],updatedAt:Date.now()});
 function saveFile(name,blob){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();
@@ -229,7 +258,7 @@ function renderDebts(){
   const badge=$('dueBadge'); const nAlert=urgent.length+soon.length;
   badge.hidden=!nAlert; badge.textContent=nAlert;
 
-  let h=`<div class="split">
+  let h=`<div class="sec">Hutang & Piutang</div><div class="split">
     <div class="box owe"><div class="lbl">Hutang saya</div><div class="v num">${rp(owe)}</div></div>
     <div class="box lend"><div class="lbl">Piutang (orang ke saya)</div><div class="v num">${rp(lend)}</div></div></div>`;
   if(urgent.length) h+=`<div class="alert">${urgent.length} catatan sudah/hari ini jatuh tempo, total ${rp(urgent.reduce((a,x)=>a+x.amount-(x.paid||0),0))}</div>`;
@@ -241,7 +270,13 @@ function renderDebts(){
   h+=`</div>`;
   const done=state.debts.filter(x=>x.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
   if(done.length) h+=`<h2>Sudah lunas</h2><div class="list">${done.slice(0,20).map(itemHTML).join('')}</div>`;
-  $('view-debt').innerHTML=h;
+  $('dash-debt').innerHTML=h;
+}
+function calUrl(x){
+  const d=x.due.replace(/-/g,'');const left=x.amount-(x.paid||0);
+  const t=(x.dir==='out'?'Bayar hutang ke ':'Tagih piutang dari ')+x.name+' '+rp(left);
+  const det='Jatuh tempo '+niceDate(x.due)+(x.note?'\n'+x.note:'')+'\n\nDicatat di Dompet Rapi: '+location.href;
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(t)+'&dates='+d+'T090000/'+d+'T093000&ctz=Asia/Jakarta&details='+encodeURIComponent(det);
 }
 function itemHTML(x){
   const st=debtStatus(x); const left=x.amount-(x.paid||0); const pct=Math.min(100,(x.paid||0)/x.amount*100);
@@ -252,7 +287,7 @@ function itemHTML(x){
    <span class="pill ${st.cls}">${st.txt}</span>
    ${(x.paid&&!x.done)?`<div class="prog"><i style="width:${pct}%"></i></div>`:''}
    <div class="acts">${x.done?`<button data-a="reopen" data-id="${x.id}">Batalkan lunas</button>`:
-     `<button data-a="pay" data-id="${x.id}">Catat cicilan</button><button data-a="lunas" data-id="${x.id}">Tandai lunas</button><button data-a="edit" data-id="${x.id}">Ubah</button>`}
+     `${x.due?`<a class="calbtn" href="${calUrl(x)}" target="_blank" rel="noopener">📅 Ingatkan di Kalender</a>`:''}<button data-a="pay" data-id="${x.id}">Catat cicilan</button><button data-a="lunas" data-id="${x.id}">Tandai lunas</button><button data-a="edit" data-id="${x.id}">Ubah</button>`}
      <button class="del" data-a="del" data-id="${x.id}">Hapus</button></div></div>
    <div class="amt num">${rp(x.done?x.amount:left)}${(x.paid&&!x.done)?`<small>dari ${rp(x.amount)}</small>`:''}</div></div>`;
 }
@@ -277,7 +312,7 @@ function renderExp(){
   const dayN=isNow?new Date().getDate():dim;
   const avg=total/Math.max(1,dayN);
   const proj=isNow?avg*dim:total;
-  let h=`<div class="monthnav"><button id="prevM" aria-label="Bulan sebelumnya">‹</button><b>${BULAN[m-1]} ${y}</b><button id="nextM" aria-label="Bulan berikutnya">›</button></div>`;
+  let h=`<div class="sec" style="margin-top:30px">Pengeluaran</div><div class="monthnav"><button id="prevM" aria-label="Bulan sebelumnya">‹</button><b>${BULAN[m-1]} ${y}</b><button id="nextM" aria-label="Bulan berikutnya">›</button></div>`;
   if(state.budget>0){
     const left=state.budget-total; const pct=Math.min(100,total/state.budget*100);
     const daysLeft=isNow?dim-dayN+1:0;
@@ -292,10 +327,13 @@ function renderExp(){
     h+=`<div class="hero"><div class="lbl">Total pengeluaran</div><div class="big num">${rp(total)}</div>
       <div class="row"><span>Belum ada anggaran bulanan</span></div></div>`;
   }
-  h+=`<div class="split"><div class="box"><div class="lbl">Rata-rata per hari</div><div class="v num">${rp(avg)}</div></div>
-     <div class="box"><div class="lbl">${isNow?'Perkiraan akhir bulan':'Jumlah transaksi'}</div><div class="v num">${isNow?rp(proj):items.length}</div></div></div>
-     <button class="ghost" id="setBudget" style="margin-bottom:4px">${state.budget>0?'Ubah anggaran bulanan':'Atur anggaran bulanan'}</button>`;
+
   if(items.length){
+    const credit=items.filter(isCredit).reduce((a,x)=>a+x.amount,0);
+    if(credit) h+=`<div class="alert warn" style="margin-top:14px">Dipakai lewat kredit & paylater bulan ini: <b class="num">${rp(credit)}</b>. Jumlah ini akan jadi tagihan yang harus dibayar.</div>`;
+    const bm={}; items.forEach(x=>{const l=methodLabel(x);bm[l]=bm[l]||{v:0,c:isCredit(x)};bm[l].v+=x.amount});
+    const mrows=Object.entries(bm).sort((a,b)=>b[1].v-a[1].v);
+    h+=`<h2>Per metode bayar</h2><div class="cats">${mrows.map(([l,o])=>`<div class="cat"><span>${esc(l)}${o.c?' <span class="tag">kredit</span>':''}</span><span class="num">${rp(o.v)} <span style="color:var(--muted)">(${Math.round(o.v/total*100)}%)</span></span><div class="bar"><i style="width:${o.v/mrows[0][1].v*100}%;background:${o.c?'var(--warn)':'var(--brand)'}"></i></div></div>`).join('')}</div>`;
     const by={}; items.forEach(x=>by[x.cat]=(by[x.cat]||0)+x.amount);
     const rows=Object.entries(by).sort((a,b)=>b[1]-a[1]);
     h+=`<h2>Per kategori</h2><div class="cats">${rows.map(([c,v])=>{const k=catOf(c);return `<div class="cat"><span><span class="cdot" style="background:${k.c}"></span>${k.n}</span><span class="num">${rp(v)} <span style="color:var(--muted)">(${Math.round(v/total*100)}%)</span></span><div class="bar"><i style="width:${v/rows[0][1]*100}%;background:${k.c}"></i></div></div>`}).join('')}</div>`;
@@ -303,16 +341,15 @@ function renderExp(){
     h+=`<h2>Riwayat</h2><div class="list">`;
     Object.keys(days).sort().reverse().forEach(d=>{
       const arr=days[d]; h+=`<div class="dayhead"><span>${niceDate(d)}</span><span class="num">${rp(arr.reduce((a,x)=>a+x.amount,0))}</span></div>`;
-      arr.slice().reverse().forEach(x=>{const k=catOf(x.cat);h+=`<div class="item"><span class="dir" style="background:${k.c}"></span><div class="main"><div class="t">${esc(x.note||k.n)}</div><div class="s">${k.n}</div><div class="acts"><button data-e="edit" data-id="${x.id}">Ubah</button><button class="del" data-e="del" data-id="${x.id}">Hapus</button></div></div><div class="amt num">${rp(x.amount)}</div></div>`});
+      arr.slice().reverse().forEach(x=>{const k=catOf(x.cat);h+=`<div class="item"><span class="dir" style="background:${k.c}"></span><div class="main"><div class="t">${esc(x.note||k.n)}</div><div class="s">${k.n}, via ${esc(methodLabel(x))}${isCredit(x)?' <span class="tag">kredit</span>':''}</div><div class="acts"><button data-e="edit" data-id="${x.id}">Ubah</button><button class="del" data-e="del" data-id="${x.id}">Hapus</button></div></div><div class="amt num">${rp(x.amount)}</div></div>`});
     });
     h+=`</div>`;
   } else h+=`<h2>Riwayat</h2><div class="list"><div class="empty">Belum ada pengeluaran di bulan ini. Ketuk “+ Catat pengeluaran”.</div></div>`;
-  $('view-exp').innerHTML=h;
+  $('dash-exp').innerHTML=h;
   $('prevM').onclick=()=>shiftMonth(-1); $('nextM').onclick=()=>shiftMonth(1);
-  $('setBudget').onclick=openBudgetSheet;
 }
 async function shiftMonth(n){const [y,m]=curMonth.split('-').map(Number);curMonth=monthKey(new Date(y,m-1+n,1));await ensureMonth(curMonth);render()}
-$('view-exp').addEventListener('click',e=>{
+$('view-debt').addEventListener('click',e=>{
   const b=e.target.closest('button[data-e]'); if(!b) return;
   const arr=state.months[curMonth]; const x=arr.find(i=>i.id===b.dataset.id); if(!x) return;
   if(b.dataset.e==='del'){if(confirm('Hapus pengeluaran ini?')){state.months[curMonth]=arr.filter(i=>i!==x);saveMonth(curMonth);render();toast('Pengeluaran dihapus')}}
@@ -362,27 +399,37 @@ function openPaySheet(x){
     saveDebts();closeSheet();render();toast(x.done?'Lunas!':'Cicilan disimpan, sisa '+rp(x.amount-x.paid));
   };
 }
-function openExpSheet(x){
-  const edit=!!x; x=x||{amount:0,cat:'makan',date:curMonth===monthKey(new Date())?todayStr():curMonth+'-01',note:''};
-  let cat=x.cat;
-  openSheet(`<h3>${edit?'Ubah pengeluaran':'Catat pengeluaran'}</h3>
+function openExpSheet(x,inline){
+  const edit=!!x; x=x||{amount:0,cat:'makan',date:inline?todayStr():(curMonth===monthKey(new Date())?todayStr():curMonth+'-01'),note:''};
+  let cat=x.cat; let meth=x.method||state.lastMethod||'tunai';
+  const formHtml=(`<h3>${edit?'Ubah pengeluaran':'Catat pengeluaran'}</h3>
    <div class="field"><label for="eAmt">Jumlah</label>${moneyInput('eAmt',x.amount)}</div>
    <div class="field"><label>Kategori</label><div class="chips" id="eCats">${CATS.map(c=>`<button data-c="${c.id}" aria-pressed="${c.id===cat}"><span class="cdot" style="background:${c.c}"></span>${c.n}</button>`).join('')}</div></div>
+   <div class="field"><label>Dibayar pakai</label><div class="chips" id="eMeth">${METHODS.map(mm=>`<button data-m="${mm.id}" aria-pressed="${mm.id===meth}">${mm.n}${mm.k==='credit'?' <span class="tag">kredit</span>':''}</button>`).join('')}</div>
+     <div id="eMethOther" ${meth==='lain'?'':'hidden'} style="margin-top:8px"><input id="eMethName" value="${esc(x.methodName||'')}" placeholder="Nama metode, mis. BCA PayLater, Atome"><label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-weight:500;color:var(--ink)"><input type="checkbox" id="eMethCredit" style="width:auto" ${x.methodCredit?'checked':''}> Ini kredit / paylater (jadi tagihan)</label></div></div>
    <div class="field"><label for="eNote">Keterangan (opsional)</label><input id="eNote" value="${esc(x.note)}" placeholder="mis. nasi padang, bensin"></div>
    <div class="field"><label for="eDate">Tanggal</label><input type="date" id="eDate" value="${x.date}"></div>
-   <div class="btns"><button class="secondary" data-close>Batal</button><button class="primary" id="eSave">${edit?'Simpan perubahan':'Simpan pengeluaran'}</button></div>`);
+   <div class="btns">${inline?'':'<button class="secondary" data-close>Batal</button>'}<button class="primary" id="eSave">${edit?'Simpan perubahan':'Simpan pengeluaran'}</button></div>`);
+  if(inline){
+    const today=(state.months[monthKey(new Date())]||[]).filter(i=>i.date===todayStr());
+    $('view-exp').innerHTML=`<div class="inputcard">${formHtml}</div>`+(today.length?`<h2>Dicatat hari ini <span class="num" style="color:var(--muted);font-weight:600">${rp(today.reduce((a,i)=>a+i.amount,0))}</span></h2><div class="list">${today.slice().reverse().map(i=>`<div class="item"><span class="dir" style="background:${catOf(i.cat).c}"></span><div class="main"><div class="t">${esc(i.note||catOf(i.cat).n)}</div><div class="s">${catOf(i.cat).n}, via ${esc(methodLabel(i))}</div></div><div class="amt num">${rp(i.amount)}</div></div>`).join('')}</div><div class="hint" style="margin:8px 2px">Ubah atau hapus catatan lewat Dashboard.</div>`:'');
+    setTimeout(()=>{const f=$('eAmt');if(f)f.focus()},60);
+  } else openSheet(formHtml);
   bindMoney('eAmt');
   $('eCats').onclick=e=>{const b=e.target.closest('button');if(!b)return;cat=b.dataset.c;$('eCats').querySelectorAll('button').forEach(z=>z.setAttribute('aria-pressed',z.dataset.c===cat))};
+  $('eMeth').onclick=e=>{const b=e.target.closest('button');if(!b)return;meth=b.dataset.m;$('eMeth').querySelectorAll('button').forEach(z=>z.setAttribute('aria-pressed',z.dataset.m===meth));$('eMethOther').hidden=meth!=='lain'};
   $('eSave').onclick=async()=>{
     const amount=readMoney('eAmt'), date=$('eDate').value||todayStr(), note=$('eNote').value.trim();
+    const mfields={method:meth,methodName:meth==='lain'?$('eMethName').value.trim():'',methodCredit:meth==='lain'?$('eMethCredit').checked:false};
+    if(state.lastMethod!==meth){state.lastMethod=meth;saveSettings()}
     if(!amount){toast('Isi jumlah dulu');return}
     const m=date.slice(0,7);
     if(edit){
       const old=x.date.slice(0,7);
-      if(old!==m){state.months[old]=state.months[old].filter(i=>i!==x);saveMonth(old);await ensureMonth(m);Object.assign(x,{amount,cat,date,note});state.months[m].push(x);saveMonth(m)}
-      else{Object.assign(x,{amount,cat,date,note});saveMonth(m)}
-    } else {await ensureMonth(m);state.months[m].push({id:uidGen(),amount,cat,date,note});saveMonth(m)}
-    closeSheet();render();toast(edit?'Perubahan disimpan':'Pengeluaran disimpan');
+      if(old!==m){state.months[old]=state.months[old].filter(i=>i!==x);saveMonth(old);await ensureMonth(m);Object.assign(x,{amount,cat,date,note},mfields);state.months[m].push(x);saveMonth(m)}
+      else{Object.assign(x,{amount,cat,date,note},mfields);saveMonth(m)}
+    } else {await ensureMonth(m);state.months[m].push(Object.assign({id:uidGen(),amount,cat,date,note},mfields));saveMonth(m)}
+    if(!inline)closeSheet();render();toast(edit?'Perubahan disimpan':'Pengeluaran disimpan, cek di Dashboard');
   };
 }
 function openBudgetSheet(){
@@ -403,10 +450,10 @@ async function exportXlsx(){
   const wb=XLSX.utils.book_new();
   const now=new Date();
   const stamp='Diperbarui: '+now.getDate()+' '+BULAN[now.getMonth()]+' '+now.getFullYear()+', pukul '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
-  const ex=[[stamp],[],['Tanggal','Kategori','Keterangan','Jumlah (Rp)']].concat(items.map(x=>[x.date,catOf(x.cat).n,x.note||'',x.amount]));
-  ex.push([],['','','Total',total]);
-  if(state.budget>0) ex.push(['','','Anggaran',state.budget],['','','Sisa',state.budget-total]);
-  const ws1=XLSX.utils.aoa_to_sheet(ex); ws1['!cols']=[{wch:12},{wch:20},{wch:30},{wch:16}];
+  const ex=[[stamp],[],['Tanggal','Kategori','Keterangan','Metode bayar','Kredit/Paylater','Jumlah (Rp)']].concat(items.map(x=>[x.date,catOf(x.cat).n,x.note||'',methodLabel(x),isCredit(x)?'Ya':'',x.amount]));
+  ex.push([],['','','','','Total',total]);const cr=items.filter(isCredit).reduce((a,x)=>a+x.amount,0);if(cr)ex.push(['','','','','Total via kredit/paylater',cr]);
+  if(state.budget>0) ex.push(['','','','','Anggaran',state.budget],['','','','','Sisa',state.budget-total]);
+  const ws1=XLSX.utils.aoa_to_sheet(ex); ws1['!cols']=[{wch:12},{wch:20},{wch:30},{wch:18},{wch:24},{wch:16}];
   XLSX.utils.book_append_sheet(wb,ws1,'Pengeluaran');
   const by={}; items.forEach(x=>by[x.cat]=(by[x.cat]||0)+x.amount);
   const cat=[[stamp],[],['Kategori','Jumlah (Rp)','Persen']].concat(Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([c,v])=>[catOf(c).n,v,total?Math.round(v/total*1000)/10+'%':'0%']));
@@ -418,6 +465,10 @@ async function exportXlsx(){
   if(total) cat.push([],['Total',total,'100%']);
   const ws2=XLSX.utils.aoa_to_sheet(cat); ws2['!cols']=[{wch:20},{wch:16},{wch:10}];
   XLSX.utils.book_append_sheet(wb,ws2,'Per kategori');
+  const bm={};items.forEach(x=>{const l=methodLabel(x);bm[l]=bm[l]||[0,isCredit(x)];bm[l][0]+=x.amount});
+  const ms=[[stamp],[],['Metode bayar','Jenis','Jumlah (Rp)','Persen']].concat(Object.entries(bm).sort((a,b)=>b[1][0]-a[1][0]).map(([l,[v,c]])=>[l,c?'Kredit/Paylater':'Tunai/Saldo',v,total?Math.round(v/total*1000)/10+'%':'0%']));
+  const ws4=XLSX.utils.aoa_to_sheet(ms);ws4['!cols']=[{wch:20},{wch:16},{wch:16},{wch:10}];
+  XLSX.utils.book_append_sheet(wb,ws4,'Per metode');
   const ws3=XLSX.utils.aoa_to_sheet(dh); ws3['!cols']=[{wch:16},{wch:20},{wch:14},{wch:16},{wch:14},{wch:12},{wch:20},{wch:28}];
   XLSX.utils.book_append_sheet(wb,ws3,'Hutang');
   const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
@@ -454,13 +505,51 @@ $('backupBtn').onclick=backupJson;
 function render(){
   $('tab-debt').setAttribute('aria-selected',tab==='debt');$('tab-exp').setAttribute('aria-selected',tab==='exp');
   $('view-debt').hidden=tab!=='debt';$('view-exp').hidden=tab!=='exp';
-  $('fab').textContent=tab==='debt'?'+ Catat hutang':'+ Catat pengeluaran';
+  $('fab').textContent='+ Catat hutang';$('fab').hidden=tab==='exp'||!uid;
   renderDebts(); renderExp();
+  if(tab==='exp'){ensureMonth(monthKey(new Date())).then(()=>openExpSheet(null,true))} else $('view-exp').innerHTML='';
 }
 $('tab-debt').onclick=()=>{tab='debt';render()};
 $('tab-exp').onclick=()=>{tab='exp';render()};
-$('fab').onclick=()=>tab==='debt'?openDebtSheet():openExpSheet();
+$('fab').onclick=()=>openDebtSheet();
 
+let swReg=null;
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').then(r=>swReg=r).catch(()=>{})}
+function notifLabel(){const b=$('notifBtn');if(!('Notification' in window)){b.hidden=true;return}
+  b.textContent=Notification.permission==='granted'?'🔔 Tes notifikasi':(Notification.permission==='denied'?'🔕 Notifikasi diblokir':'🔔 Aktifkan notifikasi')}
+async function showNotif(title,body){
+  try{const r=swReg||(navigator.serviceWorker&&await navigator.serviceWorker.getRegistration());
+    if(r){await r.showNotification(title,{body,icon:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="80" font-size="80">💰</text></svg>'),tag:'dompet-due'});return true}
+    new Notification(title,{body});return true}catch(e){return false}
+}
+function dueSummary(){
+  const open=state.debts.filter(x=>!x.done&&x.due&&daysUntil(x.due)<=3);
+  if(!open.length) return null;
+  open.sort((a,b)=>a.due.localeCompare(b.due));
+  const lines=open.slice(0,4).map(x=>{const n=daysUntil(x.due);return (n<0?'Telat '+(-n)+' hari':n===0?'Hari ini':n+' hari lagi')+': '+x.name+' '+rp(x.amount-(x.paid||0))});
+  return {title:open.length+' hutang/piutang segera jatuh tempo',body:lines.join('\n')+(open.length>4?'\n+'+(open.length-4)+' lainnya':'')};
+}
+async function checkDueNotif(){
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  const sum=dueSummary();if(!sum)return;
+  let last='';try{last=localStorage.getItem('dompet-notif-'+uid)||''}catch(e){}
+  if(last===todayStr())return;
+  if(await showNotif(sum.title,sum.body)){try{localStorage.setItem('dompet-notif-'+uid,todayStr())}catch(e){}}
+}
+$('notifBtn').onclick=async()=>{
+  if(!('Notification' in window)){toast('Browser ini tidak mendukung notifikasi');return}
+  if(Notification.permission==='denied'){toast('Notifikasi diblokir. Izinkan lewat pengaturan situs di browser.');return}
+  if(Notification.permission!=='granted'){const p=await Notification.requestPermission();notifLabel();if(p!=='granted'){toast('Izin notifikasi tidak diberikan');return}}
+  const sum=dueSummary();
+  await showNotif(sum?sum.title:'Notifikasi Dompet Rapi aktif',sum?sum.body:'Anda akan diingatkan saat ada hutang yang jatuh tempo dalam 3 hari.');
+  toast('Notifikasi aktif');
+};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&uid)checkDueNotif()});
+const closeMenu=()=>{$('moreMenu').hidden=true;$('moreBtn').setAttribute('aria-expanded','false')};
+$('moreBtn').onclick=e=>{e.stopPropagation();const h=!$('moreMenu').hidden;$('moreMenu').hidden=h;$('moreBtn').setAttribute('aria-expanded',String(!h))};
+document.addEventListener('click',e=>{if(!e.target.closest('.menuwrap'))closeMenu()});
+$('moreMenu').addEventListener('click',()=>closeMenu());
+$('budgetBtn').onclick=()=>openBudgetSheet();
 $('importBtn').onclick=()=>$('importFile').click();
 $('importFile').onchange=e=>{const f=e.target.files[0];if(f)importJson(f);e.target.value=''};
 $('logoutBtn').onclick=()=>{if(confirm('Keluar dari akun?'))signOut(auth)};
@@ -475,7 +564,7 @@ onAuthStateChanged(auth,async user=>{
   if(user){
     uid=user.uid;$('login').hidden=true;$('app').hidden=false;$('fab').hidden=false;
     $('sync').textContent=user.email||'Tersinkron';
-    await loadAll();render();
+    await loadAll();render();notifLabel();checkDueNotif();
   }else{
     uid=null;state={debts:[],budget:0,months:{}};
     $('login').hidden=false;$('app').hidden=true;$('fab').hidden=true;
