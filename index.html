@@ -129,6 +129,9 @@ h2{font-size:15px;font-weight:700;margin:20px 2px 8px}
 .tag{display:inline-block;font-size:10.5px;font-weight:700;padding:0 6px;border-radius:5px;background:var(--warn-bg);color:var(--warn);vertical-align:1px}
 .chips button[aria-pressed="true"] .tag{background:transparent;color:inherit;border:1px solid currentColor}
 a.calbtn{all:unset;cursor:pointer;font-size:12.5px;font-weight:600;padding:5px 10px;border-radius:8px;border:1px solid var(--line);color:var(--brand)}
+.sec{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:4px 2px 10px}
+.inputcard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px}
+.inputcard h3{margin:0 0 14px;font-size:18px}
 .hint{font-size:12.5px;color:var(--muted);margin-top:4px}
 </style>
 </head>
@@ -147,10 +150,10 @@ a.calbtn{all:unset;cursor:pointer;font-size:12.5px;font-weight:600;padding:5px 1
       </div></div>
     <input type="file" id="importFile" accept=".json,application/json" hidden></div></header>
   <div class="tabs" role="tablist">
-    <button role="tab" id="tab-debt" aria-selected="true">Hutang<span class="dot" id="dueBadge" hidden></span></button>
-    <button role="tab" id="tab-exp" aria-selected="false">Pengeluaran</button>
+    <button role="tab" id="tab-debt" aria-selected="true">Dashboard<span class="dot" id="dueBadge" hidden></span></button>
+    <button role="tab" id="tab-exp" aria-selected="false">+ Input Pengeluaran</button>
   </div>
-  <section id="view-debt"></section>
+  <section id="view-debt"><div id="dash-debt"></div><div id="dash-exp"></div></section>
   <section id="view-exp" hidden></section>
 </div>
 <button class="fab" id="fab" hidden>+ Catat hutang</button>
@@ -254,7 +257,7 @@ function renderDebts(){
   const badge=$('dueBadge'); const nAlert=urgent.length+soon.length;
   badge.hidden=!nAlert; badge.textContent=nAlert;
 
-  let h=`<div class="split">
+  let h=`<div class="sec">Hutang & Piutang</div><div class="split">
     <div class="box owe"><div class="lbl">Hutang saya</div><div class="v num">${rp(owe)}</div></div>
     <div class="box lend"><div class="lbl">Piutang (orang ke saya)</div><div class="v num">${rp(lend)}</div></div></div>`;
   if(urgent.length) h+=`<div class="alert">${urgent.length} catatan sudah/hari ini jatuh tempo, total ${rp(urgent.reduce((a,x)=>a+x.amount-(x.paid||0),0))}</div>`;
@@ -266,7 +269,7 @@ function renderDebts(){
   h+=`</div>`;
   const done=state.debts.filter(x=>x.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
   if(done.length) h+=`<h2>Sudah lunas</h2><div class="list">${done.slice(0,20).map(itemHTML).join('')}</div>`;
-  $('view-debt').innerHTML=h;
+  $('dash-debt').innerHTML=h;
 }
 function calUrl(x){
   const d=x.due.replace(/-/g,'');const left=x.amount-(x.paid||0);
@@ -308,7 +311,7 @@ function renderExp(){
   const dayN=isNow?new Date().getDate():dim;
   const avg=total/Math.max(1,dayN);
   const proj=isNow?avg*dim:total;
-  let h=`<div class="monthnav"><button id="prevM" aria-label="Bulan sebelumnya">‹</button><b>${BULAN[m-1]} ${y}</b><button id="nextM" aria-label="Bulan berikutnya">›</button></div>`;
+  let h=`<div class="sec" style="margin-top:30px">Pengeluaran</div><div class="monthnav"><button id="prevM" aria-label="Bulan sebelumnya">‹</button><b>${BULAN[m-1]} ${y}</b><button id="nextM" aria-label="Bulan berikutnya">›</button></div>`;
   if(state.budget>0){
     const left=state.budget-total; const pct=Math.min(100,total/state.budget*100);
     const daysLeft=isNow?dim-dayN+1:0;
@@ -343,12 +346,12 @@ function renderExp(){
     });
     h+=`</div>`;
   } else h+=`<h2>Riwayat</h2><div class="list"><div class="empty">Belum ada pengeluaran di bulan ini. Ketuk “+ Catat pengeluaran”.</div></div>`;
-  $('view-exp').innerHTML=h;
+  $('dash-exp').innerHTML=h;
   $('prevM').onclick=()=>shiftMonth(-1); $('nextM').onclick=()=>shiftMonth(1);
   $('setBudget').onclick=openBudgetSheet;
 }
 async function shiftMonth(n){const [y,m]=curMonth.split('-').map(Number);curMonth=monthKey(new Date(y,m-1+n,1));await ensureMonth(curMonth);render()}
-$('view-exp').addEventListener('click',e=>{
+$('view-debt').addEventListener('click',e=>{
   const b=e.target.closest('button[data-e]'); if(!b) return;
   const arr=state.months[curMonth]; const x=arr.find(i=>i.id===b.dataset.id); if(!x) return;
   if(b.dataset.e==='del'){if(confirm('Hapus pengeluaran ini?')){state.months[curMonth]=arr.filter(i=>i!==x);saveMonth(curMonth);render();toast('Pengeluaran dihapus')}}
@@ -398,17 +401,22 @@ function openPaySheet(x){
     saveDebts();closeSheet();render();toast(x.done?'Lunas!':'Cicilan disimpan, sisa '+rp(x.amount-x.paid));
   };
 }
-function openExpSheet(x){
-  const edit=!!x; x=x||{amount:0,cat:'makan',date:curMonth===monthKey(new Date())?todayStr():curMonth+'-01',note:''};
+function openExpSheet(x,inline){
+  const edit=!!x; x=x||{amount:0,cat:'makan',date:inline?todayStr():(curMonth===monthKey(new Date())?todayStr():curMonth+'-01'),note:''};
   let cat=x.cat; let meth=x.method||state.lastMethod||'tunai';
-  openSheet(`<h3>${edit?'Ubah pengeluaran':'Catat pengeluaran'}</h3>
+  const formHtml=(`<h3>${edit?'Ubah pengeluaran':'Catat pengeluaran'}</h3>
    <div class="field"><label for="eAmt">Jumlah</label>${moneyInput('eAmt',x.amount)}</div>
    <div class="field"><label>Kategori</label><div class="chips" id="eCats">${CATS.map(c=>`<button data-c="${c.id}" aria-pressed="${c.id===cat}"><span class="cdot" style="background:${c.c}"></span>${c.n}</button>`).join('')}</div></div>
    <div class="field"><label>Dibayar pakai</label><div class="chips" id="eMeth">${METHODS.map(mm=>`<button data-m="${mm.id}" aria-pressed="${mm.id===meth}">${mm.n}${mm.k==='credit'?' <span class="tag">kredit</span>':''}</button>`).join('')}</div>
      <div id="eMethOther" ${meth==='lain'?'':'hidden'} style="margin-top:8px"><input id="eMethName" value="${esc(x.methodName||'')}" placeholder="Nama metode, mis. BCA PayLater, Atome"><label style="display:flex;gap:8px;align-items:center;margin-top:8px;font-weight:500;color:var(--ink)"><input type="checkbox" id="eMethCredit" style="width:auto" ${x.methodCredit?'checked':''}> Ini kredit / paylater (jadi tagihan)</label></div></div>
    <div class="field"><label for="eNote">Keterangan (opsional)</label><input id="eNote" value="${esc(x.note)}" placeholder="mis. nasi padang, bensin"></div>
    <div class="field"><label for="eDate">Tanggal</label><input type="date" id="eDate" value="${x.date}"></div>
-   <div class="btns"><button class="secondary" data-close>Batal</button><button class="primary" id="eSave">${edit?'Simpan perubahan':'Simpan pengeluaran'}</button></div>`);
+   <div class="btns">${inline?'':'<button class="secondary" data-close>Batal</button>'}<button class="primary" id="eSave">${edit?'Simpan perubahan':'Simpan pengeluaran'}</button></div>`);
+  if(inline){
+    const today=(state.months[monthKey(new Date())]||[]).filter(i=>i.date===todayStr());
+    $('view-exp').innerHTML=`<div class="inputcard">${formHtml}</div>`+(today.length?`<h2>Dicatat hari ini <span class="num" style="color:var(--muted);font-weight:600">${rp(today.reduce((a,i)=>a+i.amount,0))}</span></h2><div class="list">${today.slice().reverse().map(i=>`<div class="item"><span class="dir" style="background:${catOf(i.cat).c}"></span><div class="main"><div class="t">${esc(i.note||catOf(i.cat).n)}</div><div class="s">${catOf(i.cat).n}, via ${esc(methodLabel(i))}</div></div><div class="amt num">${rp(i.amount)}</div></div>`).join('')}</div><div class="hint" style="margin:8px 2px">Ubah atau hapus catatan lewat Dashboard.</div>`:'');
+    setTimeout(()=>{const f=$('eAmt');if(f)f.focus()},60);
+  } else openSheet(formHtml);
   bindMoney('eAmt');
   $('eCats').onclick=e=>{const b=e.target.closest('button');if(!b)return;cat=b.dataset.c;$('eCats').querySelectorAll('button').forEach(z=>z.setAttribute('aria-pressed',z.dataset.c===cat))};
   $('eMeth').onclick=e=>{const b=e.target.closest('button');if(!b)return;meth=b.dataset.m;$('eMeth').querySelectorAll('button').forEach(z=>z.setAttribute('aria-pressed',z.dataset.m===meth));$('eMethOther').hidden=meth!=='lain'};
@@ -423,7 +431,7 @@ function openExpSheet(x){
       if(old!==m){state.months[old]=state.months[old].filter(i=>i!==x);saveMonth(old);await ensureMonth(m);Object.assign(x,{amount,cat,date,note},mfields);state.months[m].push(x);saveMonth(m)}
       else{Object.assign(x,{amount,cat,date,note},mfields);saveMonth(m)}
     } else {await ensureMonth(m);state.months[m].push(Object.assign({id:uidGen(),amount,cat,date,note},mfields));saveMonth(m)}
-    closeSheet();render();toast(edit?'Perubahan disimpan':'Pengeluaran disimpan');
+    if(!inline)closeSheet();render();toast(edit?'Perubahan disimpan':'Pengeluaran disimpan, cek di Dashboard');
   };
 }
 function openBudgetSheet(){
@@ -499,12 +507,13 @@ $('backupBtn').onclick=backupJson;
 function render(){
   $('tab-debt').setAttribute('aria-selected',tab==='debt');$('tab-exp').setAttribute('aria-selected',tab==='exp');
   $('view-debt').hidden=tab!=='debt';$('view-exp').hidden=tab!=='exp';
-  $('fab').textContent=tab==='debt'?'+ Catat hutang':'+ Catat pengeluaran';
+  $('fab').textContent='+ Catat hutang';$('fab').hidden=tab==='exp'||!uid;
   renderDebts(); renderExp();
+  if(tab==='exp'){ensureMonth(monthKey(new Date())).then(()=>openExpSheet(null,true))} else $('view-exp').innerHTML='';
 }
 $('tab-debt').onclick=()=>{tab='debt';render()};
 $('tab-exp').onclick=()=>{tab='exp';render()};
-$('fab').onclick=()=>tab==='debt'?openDebtSheet():openExpSheet();
+$('fab').onclick=()=>openDebtSheet();
 
 let swReg=null;
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').then(r=>swReg=r).catch(()=>{})}
