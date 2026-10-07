@@ -140,6 +140,7 @@ a.calbtn{all:unset;cursor:pointer;font-size:12.5px;font-weight:600;padding:5px 1
   <header class="top"><div><h1>Dompet Rapi</h1><span class="sync" id="sync"></span></div><div class="hbtns"><button class="ghost" id="exportBtn">Ekspor ke Excel</button>
     <div class="menuwrap"><button class="ghost" id="moreBtn" aria-haspopup="true" aria-expanded="false" aria-label="Menu lainnya">⋮</button>
       <div class="menu" id="moreMenu" hidden>
+        <button id="budgetBtn">💵 Atur anggaran bulanan</button>
         <button id="notifBtn">🔔 Aktifkan notifikasi</button>
         <button id="backupBtn">Backup data (JSON)</button>
         <button id="importBtn">Impor backup</button>
@@ -323,9 +324,7 @@ function renderExp(){
     h+=`<div class="hero"><div class="lbl">Total pengeluaran</div><div class="big num">${rp(total)}</div>
       <div class="row"><span>Belum ada anggaran bulanan</span></div></div>`;
   }
-  h+=`<div class="split"><div class="box"><div class="lbl">Rata-rata per hari</div><div class="v num">${rp(avg)}</div></div>
-     <div class="box"><div class="lbl">${isNow?'Perkiraan akhir bulan':'Jumlah transaksi'}</div><div class="v num">${isNow?rp(proj):items.length}</div></div></div>
-     <button class="ghost" id="setBudget" style="margin-bottom:4px">${state.budget>0?'Ubah anggaran bulanan':'Atur anggaran bulanan'}</button>`;
+
   if(items.length){
     const credit=items.filter(isCredit).reduce((a,x)=>a+x.amount,0);
     if(credit) h+=`<div class="alert warn" style="margin-top:14px">Dipakai lewat kredit & paylater bulan ini: <b class="num">${rp(credit)}</b>. Jumlah ini akan jadi tagihan yang harus dibayar.</div>`;
@@ -345,7 +344,6 @@ function renderExp(){
   } else h+=`<h2>Riwayat</h2><div class="list"><div class="empty">Belum ada pengeluaran di bulan ini. Ketuk “+ Catat pengeluaran”.</div></div>`;
   $('view-exp').innerHTML=h;
   $('prevM').onclick=()=>shiftMonth(-1); $('nextM').onclick=()=>shiftMonth(1);
-  $('setBudget').onclick=openBudgetSheet;
 }
 async function shiftMonth(n){const [y,m]=curMonth.split('-').map(Number);curMonth=monthKey(new Date(y,m-1+n,1));await ensureMonth(curMonth);render()}
 $('view-exp').addEventListener('click',e=>{
@@ -542,6 +540,7 @@ const closeMenu=()=>{$('moreMenu').hidden=true;$('moreBtn').setAttribute('aria-e
 $('moreBtn').onclick=e=>{e.stopPropagation();const h=!$('moreMenu').hidden;$('moreMenu').hidden=h;$('moreBtn').setAttribute('aria-expanded',String(!h))};
 document.addEventListener('click',e=>{if(!e.target.closest('.menuwrap'))closeMenu()});
 $('moreMenu').addEventListener('click',()=>closeMenu());
+$('budgetBtn').onclick=()=>openBudgetSheet();
 $('importBtn').onclick=()=>$('importFile').click();
 $('importFile').onchange=e=>{const f=e.target.files[0];if(f)importJson(f);e.target.value=''};
 $('logoutBtn').onclick=()=>{if(confirm('Keluar dari akun?'))signOut(auth)};
