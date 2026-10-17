@@ -107,7 +107,7 @@ h2{font-size:15px;font-weight:700;margin:20px 2px 8px}
 .scrim.open{display:flex}
 .sheet{background:var(--surface);width:100%;max-width:560px;border-radius:22px 22px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px));max-height:92%;overflow:auto;animation:up .22s ease}
 @keyframes up{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}
-.clock span{white-space:nowrap}
+.clock span{white-space:nowrap;display:block}
 .hbtns .ghost{white-space:nowrap}
 header.top>div:first-child{min-width:0}
 header.top h1{white-space:nowrap}
@@ -526,7 +526,7 @@ $('tab-debt').onclick=()=>switchTab('debt');
 $('tab-exp').onclick=()=>switchTab('exp');
 /* ---------- jam ---------- */
 const HARI=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
-function tick(){const d=new Date();const el=$('clock');if(el)el.innerHTML='<span>'+HARI[d.getDay()]+', '+d.getDate()+' '+BULAN[d.getMonth()]+' '+d.getFullYear()+'</span> <span>• '+String(d.getHours()).padStart(2,'0')+'.'+String(d.getMinutes()).padStart(2,'0')+'.'+String(d.getSeconds()).padStart(2,'0')+'</span>'}
+function tick(){const d=new Date();const el=$('clock');if(el)el.innerHTML='<span>'+HARI[d.getDay()]+', '+d.getDate()+' '+BULAN[d.getMonth()]+' '+d.getFullYear()+'</span><span>Pukul '+String(d.getHours()).padStart(2,'0')+'.'+String(d.getMinutes()).padStart(2,'0')+'.'+String(d.getSeconds()).padStart(2,'0')+'</span>'}
 tick();setInterval(tick,1000);
 $('fab').onclick=()=>tab==='debt'?openDebtSheet():openExpSheet();
 
