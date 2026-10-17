@@ -37,9 +37,10 @@ header.top{display:flex;align-items:flex-start;justify-content:space-between;gap
 .menu button.danger{color:var(--bad)}
 header.top h1{font-size:20px;font-weight:800;letter-spacing:-.02em;margin:0}
 .sync{font-size:12px;color:var(--muted);display:block}
-.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--sunk);border:1px solid var(--line);border-radius:14px;padding:4px;gap:4px;margin-bottom:16px;position:relative}
-.tabs .ind{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 6px);background:var(--surface);border-radius:10px;box-shadow:0 1px 0 var(--line),0 2px 8px rgba(0,0,0,.06);transition:transform .32s cubic-bezier(.3,.9,.3,1)}
+.tabs{display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--sunk);border:1px solid var(--line);border-radius:14px;padding:4px;gap:4px;margin-bottom:16px;position:relative}
+.tabs .ind{position:absolute;top:4px;bottom:4px;left:4px;width:calc((100% - 16px) / 3);background:var(--surface);border-radius:10px;box-shadow:0 1px 0 var(--line),0 2px 8px rgba(0,0,0,.06);transition:transform .32s cubic-bezier(.3,.9,.3,1)}
 .tabs[data-tab="exp"] .ind{transform:translateX(calc(100% + 4px))}
+.tabs[data-tab="cal"] .ind{transform:translateX(calc(200% + 8px))}
 .tabs button{all:unset;cursor:pointer;text-align:center;padding:10px 8px;border-radius:10px;font-weight:600;color:var(--muted);position:relative;z-index:1;transition:color .25s}
 .tabs button[aria-selected="true"]{color:var(--ink)}
 .tabs .dot{display:inline-block;min-width:18px;height:18px;line-height:18px;border-radius:9px;background:var(--bad);color:#fff;font-size:11px;font-weight:700;margin-left:6px;padding:0 5px;vertical-align:1px}
@@ -107,6 +108,27 @@ h2{font-size:15px;font-weight:700;margin:20px 2px 8px}
 .scrim.open{display:flex}
 .sheet{background:var(--surface);width:100%;max-width:560px;border-radius:22px 22px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px));max-height:92%;overflow:auto;animation:up .22s ease}
 @keyframes up{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}
+.cal{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:10px}
+.cal-h,.cal-g{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-h div{text-align:center;font-size:11.5px;font-weight:700;color:var(--muted);padding:4px 0 6px}
+.cal-g button{all:unset;box-sizing:border-box;cursor:pointer;min-height:58px;border-radius:10px;padding:5px 3px;display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid transparent;position:relative}
+.cal-g button .n{font-size:13.5px;font-weight:600}
+.cal-g button.out{opacity:.35}
+.cal-g button.today .n{background:var(--brand);color:var(--brand-ink);border-radius:999px;min-width:24px;height:24px;line-height:24px;text-align:center}
+.cal-g button.sel{border-color:var(--ink)}
+.cal-g button.has{background:var(--sunk)}
+.cal-g button.st-warn{background:var(--warn-bg)}
+.cal-g button.st-bad{background:var(--bad-bg)}
+.cal-g .amt{font-size:10.5px;font-weight:700;line-height:1.1}
+.cal-g .st-bad .amt{color:var(--bad)}.cal-g .st-warn .amt{color:var(--warn)}
+.cal-g .dots{display:flex;gap:2px}.cal-g .dots i{width:5px;height:5px;border-radius:3px;background:var(--bad)}.cal-g .dots i.in{background:var(--good)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin:10px 2px 0}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;background:var(--c)}
+.uprow{display:flex;gap:12px;align-items:center;padding:11px 14px;border-top:1px solid var(--line);cursor:pointer}
+.uprow:first-child{border-top:0}
+.datechip{flex:none;width:46px;text-align:center;border-radius:10px;padding:5px 0;background:var(--sunk);line-height:1.15}
+.datechip b{display:block;font-size:17px}.datechip small{font-size:11px;color:var(--muted);font-weight:600}
+.datechip.bad{background:var(--bad-bg);color:var(--bad)}.datechip.warn{background:var(--warn-bg);color:var(--warn)}
 .clock span{white-space:nowrap;display:block}
 .hbtns .ghost{white-space:nowrap}
 header.top>div:first-child{min-width:0}
@@ -162,9 +184,11 @@ a.calbtn{all:unset;cursor:pointer;font-size:12.5px;font-weight:600;padding:5px 1
   <div class="tabs" role="tablist" id="tabs"><span class="ind" aria-hidden="true"></span>
     <button role="tab" id="tab-debt" aria-selected="true">Hutang<span class="dot" id="dueBadge" hidden></span></button>
     <button role="tab" id="tab-exp" aria-selected="false">Pengeluaran</button>
+    <button role="tab" id="tab-cal" aria-selected="false">Kalender</button>
   </div>
   <section id="view-debt"></section>
   <section id="view-exp" hidden></section>
+  <section id="view-cal" hidden></section>
 </div>
 <button class="fab" id="fab" hidden>+ Catat hutang</button>
 <div class="scrim" id="scrim"><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
@@ -301,7 +325,7 @@ function itemHTML(x){
      <button class="del" data-a="del" data-id="${x.id}">Hapus</button></div></div>
    <div class="amt num">${rp(x.done?x.amount:left)}${(x.paid&&!x.done)?`<small>dari ${rp(x.amount)}</small>`:''}</div></div>`;
 }
-$('view-debt').addEventListener('click',e=>{
+function debtClick(e){
   const b=e.target.closest('button[data-a]'); if(!b) return;
   const x=state.debts.find(d=>d.id===b.dataset.id); if(!x) return;
   const a=b.dataset.a;
@@ -310,6 +334,57 @@ $('view-debt').addEventListener('click',e=>{
   else if(a==='del'){if(confirm('Hapus catatan '+x.name+'?')){state.debts=state.debts.filter(d=>d!==x);saveDebts();render();toast('Catatan dihapus')}}
   else if(a==='edit') openDebtSheet(x);
   else if(a==='pay') openPaySheet(x);
+}
+$('view-debt').addEventListener('click',debtClick);
+$('view-cal').addEventListener('click',debtClick);
+
+/* ---------- kalender ---------- */
+let calMonth=monthKey(new Date()), calSel=todayStr();
+const HR=['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
+function shortRp(n){if(n>=1e6){const v=n/1e6;return (v>=10?Math.round(v):Math.round(v*10)/10).toString().replace('.',',')+'jt'}if(n>=1e3)return Math.round(n/1e3)+'rb';return String(Math.round(n))}
+function dayLevel(list){
+  let lv='';list.forEach(x=>{const n=daysUntil(x.due);if(n<=0)lv='bad';else if(n<=3&&lv!=='bad')lv='warn'});return lv;
+}
+function renderCal(){
+  const [y,m]=calMonth.split('-').map(Number);
+  const open=state.debts.filter(x=>!x.done&&x.due);
+  const byDay={};open.forEach(x=>(byDay[x.due]=byDay[x.due]||[]).push(x));
+  const first=new Date(y,m-1,1), start=(first.getDay()+6)%7, dim=new Date(y,m,0).getDate();
+  const cells=[];
+  for(let i=0;i<42;i++){
+    const d=new Date(y,m-1,1-start+i);
+    if(i>=35&&d.getMonth()!==m-1)break;
+    cells.push(d);
+  }
+  const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const today=todayStr();
+  const monthOpen=open.filter(x=>x.due.startsWith(calMonth));
+  const mOut=monthOpen.filter(x=>x.dir==='out').reduce((a,x)=>a+x.amount-(x.paid||0),0);
+  const mIn=monthOpen.filter(x=>x.dir==='in').reduce((a,x)=>a+x.amount-(x.paid||0),0);
+  let h=`<div class="monthnav"><button id="calPrev" aria-label="Bulan sebelumnya">‹</button><b>${BULAN[m-1]} ${y}</b><button id="calNext" aria-label="Bulan berikutnya">›</button></div>
+  <div class="split"><div class="box owe"><div class="lbl">Harus dibayar bulan ini</div><div class="v num">${rp(mOut)}</div></div>
+  <div class="box lend"><div class="lbl">Akan diterima bulan ini</div><div class="v num">${rp(mIn)}</div></div></div>
+  <div class="cal"><div class="cal-h">${HR.map(x=>`<div>${x}</div>`).join('')}</div><div class="cal-g">`;
+  cells.forEach(d=>{
+    const k=iso(d), list=byDay[k]||[], lv=list.length?dayLevel(list):'';
+    const tot=list.reduce((a,x)=>a+x.amount-(x.paid||0),0);
+    const cls=[d.getMonth()!==m-1?'out':'',k===today?'today':'',k===calSel?'sel':'',list.length?'has':'',lv?'st-'+lv:''].join(' ');
+    h+=`<button class="${cls}" data-day="${k}" aria-label="${d.getDate()} ${BULAN[d.getMonth()]}${list.length?', '+list.length+' jatuh tempo':''}"><span class="n">${d.getDate()}</span>${list.length?`<span class="amt num">${shortRp(tot)}</span><span class="dots">${list.slice(0,3).map(x=>`<i class="${x.dir}"></i>`).join('')}</span>`:''}</button>`;
+  });
+  h+=`</div></div><div class="legend"><span style="--c:var(--bad-bg)">Telat / hari ini</span><span style="--c:var(--warn-bg)">≤ 3 hari lagi</span><span style="--c:var(--sunk)">Ada jatuh tempo</span></div>`;
+  const selList=(byDay[calSel]||[]).slice().sort((a,b)=>a.dir.localeCompare(b.dir));
+  h+=`<h2>${niceDate(calSel)}${calSel===today?' (hari ini)':''}</h2><div class="list">${selList.length?selList.map(itemHTML).join(''):`<div class="empty">Tidak ada jatuh tempo di tanggal ini.</div>`}</div>`;
+  const up=open.filter(x=>daysUntil(x.due)<=14).sort((a,b)=>a.due.localeCompare(b.due));
+  h+=`<h2>Segera jatuh tempo (14 hari)</h2><div class="list">${up.length?up.map(x=>{const n=daysUntil(x.due),st=debtStatus(x),d=parseD(x.due);return `<div class="uprow" data-go="${x.due}"><div class="datechip ${n<=0?'bad':n<=3?'warn':''}"><b>${d.getDate()}</b><small>${BLN[d.getMonth()]}</small></div><div class="main" style="flex:1;min-width:0"><div class="t">${esc(x.name)}</div><div class="s">${x.dir==='out'?'Saya bayar':'Saya terima'}</div><span class="pill ${st.cls}">${st.txt}</span></div><div class="amt num" style="color:${x.dir==='out'?'var(--bad)':'var(--good)'}">${rp(x.amount-(x.paid||0))}</div></div>`}).join(''):`<div class="empty">Tidak ada jatuh tempo dalam 14 hari ke depan. Aman!</div>`}</div>`;
+  $('view-cal').innerHTML=h;
+  $('calPrev').onclick=()=>{calMonth=monthKey(new Date(y,m-2,1));renderCal()};
+  $('calNext').onclick=()=>{calMonth=monthKey(new Date(y,m,1));renderCal()};
+}
+$('view-cal').addEventListener('click',e=>{
+  const d=e.target.closest('[data-day]');
+  if(d){calSel=d.dataset.day;if(!calSel.startsWith(calMonth))calMonth=calSel.slice(0,7);renderCal();return}
+  const g=e.target.closest('[data-go]');
+  if(g){calSel=g.dataset.go;calMonth=calSel.slice(0,7);renderCal();const t=$('view-cal').querySelector('h2');if(t)t.scrollIntoView({behavior:'smooth',block:'start'})}
 });
 
 /* ---------- expenses ---------- */
@@ -375,8 +450,8 @@ function closeSheet(){$('scrim').classList.remove('open')}
 $('scrim').addEventListener('click',e=>{if(e.target===$('scrim'))closeSheet()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet()});
 
-function openDebtSheet(x){
-  const edit=!!x; x=x||{dir:'out',name:'',amount:0,due:'',note:''};
+function openDebtSheet(x,preset){
+  const edit=!!x&&!preset; x=edit?x:Object.assign({dir:'out',name:'',amount:0,due:'',note:''},preset?x:{});
   let dir=x.dir;
   openSheet(`<h3>${edit?'Ubah catatan':'Catat hutang baru'}</h3>
    <div class="field"><div class="seg"><button class="out" id="dOut" aria-pressed="${dir==='out'}">Saya berhutang</button><button class="in" id="dIn" aria-pressed="${dir==='in'}">Orang berhutang ke saya</button></div></div>
@@ -508,27 +583,28 @@ $('backupBtn').onclick=backupJson;
 
 /* ---------- shell ---------- */
 function render(){
-  $('tab-debt').setAttribute('aria-selected',tab==='debt');$('tab-exp').setAttribute('aria-selected',tab==='exp');
-  $('view-debt').hidden=tab!=='debt';$('view-exp').hidden=tab!=='exp';
-  $('fab').textContent=tab==='debt'?'+ Catat hutang':'+ Catat pengeluaran';
-  renderDebts(); renderExp();
+  ['debt','exp','cal'].forEach(k=>{$('tab-'+k).setAttribute('aria-selected',tab===k);$('view-'+k).hidden=tab!==k});
+  $('fab').textContent=tab==='exp'?'+ Catat pengeluaran':'+ Catat hutang';
+  renderDebts(); renderExp(); renderCal();
 }
 function switchTab(t){
   if(t===tab)return;
-  tab=t;render();
+  const prev=tab;tab=t;render();
   $('tabs').dataset.tab=t;
-  const v=$(t==='exp'?'view-exp':'view-debt');
+  const v=$('view-'+t);
   v.classList.remove('enter-r','enter-l');void v.offsetWidth;
-  v.classList.add(t==='exp'?'enter-r':'enter-l');
+  v.classList.add(TABS.indexOf(t)>TABS.indexOf(prev)?'enter-r':'enter-l');
   v.addEventListener('animationend',()=>v.classList.remove('enter-r','enter-l'),{once:true});
 }
+const TABS=['debt','exp','cal'];
 $('tab-debt').onclick=()=>switchTab('debt');
+$('tab-cal').onclick=()=>switchTab('cal');
 $('tab-exp').onclick=()=>switchTab('exp');
 /* ---------- jam ---------- */
 const HARI=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
-function tick(){const d=new Date();const el=$('clock');if(el)el.innerHTML='<span>'+HARI[d.getDay()]+', '+d.getDate()+' '+BULAN[d.getMonth()]+' '+d.getFullYear()+'</span><span>Pukul '+String(d.getHours()).padStart(2,'0')+'.'+String(d.getMinutes()).padStart(2,'0')+'.'+String(d.getSeconds()).padStart(2,'0')+'</span>'}
+function tick(){const d=new Date();const el=$('clock');if(el)el.innerHTML='<span>'+HARI[d.getDay()]+', '+d.getDate()+' '+BULAN[d.getMonth()]+' '+d.getFullYear()+'</span><span>'+String(d.getHours()).padStart(2,'0')+'.'+String(d.getMinutes()).padStart(2,'0')+'.'+String(d.getSeconds()).padStart(2,'0')+'</span>'}
 tick();setInterval(tick,1000);
-$('fab').onclick=()=>tab==='debt'?openDebtSheet():openExpSheet();
+$('fab').onclick=()=>tab==='exp'?openExpSheet():(tab==='cal'?openDebtSheet({due:calSel},true):openDebtSheet());
 
 let swReg=null;
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').then(r=>swReg=r).catch(()=>{})}
