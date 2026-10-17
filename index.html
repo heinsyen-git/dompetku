@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Dompet Rapi</title>
+<title>Catatan Keuangan</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -37,9 +37,11 @@ header.top{display:flex;align-items:flex-start;justify-content:space-between;gap
 .menu button.danger{color:var(--bad)}
 header.top h1{font-size:20px;font-weight:800;letter-spacing:-.02em;margin:0}
 .sync{font-size:12px;color:var(--muted);display:block}
-.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--sunk);border:1px solid var(--line);border-radius:14px;padding:4px;gap:4px;margin-bottom:16px}
-.tabs button{all:unset;cursor:pointer;text-align:center;padding:10px 8px;border-radius:10px;font-weight:600;color:var(--muted);position:relative}
-.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 0 var(--line)}
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--sunk);border:1px solid var(--line);border-radius:14px;padding:4px;gap:4px;margin-bottom:16px;position:relative}
+.tabs .ind{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 6px);background:var(--surface);border-radius:10px;box-shadow:0 1px 0 var(--line),0 2px 8px rgba(0,0,0,.06);transition:transform .32s cubic-bezier(.3,.9,.3,1)}
+.tabs[data-tab="exp"] .ind{transform:translateX(calc(100% + 4px))}
+.tabs button{all:unset;cursor:pointer;text-align:center;padding:10px 8px;border-radius:10px;font-weight:600;color:var(--muted);position:relative;z-index:1;transition:color .25s}
+.tabs button[aria-selected="true"]{color:var(--ink)}
 .tabs .dot{display:inline-block;min-width:18px;height:18px;line-height:18px;border-radius:9px;background:var(--bad);color:#fff;font-size:11px;font-weight:700;margin-left:6px;padding:0 5px;vertical-align:1px}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
 
@@ -105,7 +107,16 @@ h2{font-size:15px;font-weight:700;margin:20px 2px 8px}
 .scrim.open{display:flex}
 .sheet{background:var(--surface);width:100%;max-width:560px;border-radius:22px 22px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px));max-height:92%;overflow:auto;animation:up .22s ease}
 @keyframes up{from{transform:translateY(30px);opacity:.4}to{transform:none;opacity:1}}
-@media (prefers-reduced-motion:reduce){.sheet{animation:none}.gauge i{transition:none}}
+.clock span{white-space:nowrap}
+.hbtns .ghost{white-space:nowrap}
+header.top>div:first-child{min-width:0}
+header.top h1{white-space:nowrap}
+.clock{display:block;font-size:12.5px;font-weight:600;color:var(--brand);margin-top:1px}
+@keyframes inR{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes inL{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+.enter-r{animation:inR .34s cubic-bezier(.3,.9,.3,1)}
+.enter-l{animation:inL .34s cubic-bezier(.3,.9,.3,1)}
+@media (prefers-reduced-motion:reduce){.sheet{animation:none}.gauge i{transition:none}.tabs .ind{transition:none}.enter-r,.enter-l{animation:none}}
 .sheet h3{margin:0 0 14px;font-size:18px}
 .field{margin-bottom:12px}
 .field label{display:block;font-size:13px;font-weight:600;margin-bottom:5px;color:var(--muted)}
@@ -133,11 +144,12 @@ a.calbtn{all:unset;cursor:pointer;font-size:12.5px;font-weight:600;padding:5px 1
 </style>
 </head>
 <body>
-<div class="wrap" id="login">
-  <div class="loginbox"><div class="logo">💰</div><h1>Dompet Rapi</h1><p>Catat hutang dan pengeluaran, tersinkron di semua perangkat Anda.</p><button class="primary" id="loginBtn">Masuk dengan Google</button></div>
+<div class="wrap" id="splash"><div class="loginbox"><div class="logo">💰</div><p>Memuat…</p></div></div>
+<div class="wrap" id="login" hidden>
+  <div class="loginbox"><div class="logo">💰</div><h1>Catatan Keuangan</h1><p>Catat hutang dan pengeluaran, tersinkron di semua perangkat Anda.</p><button class="primary" id="loginBtn">Masuk dengan Google</button></div>
 </div>
 <div class="wrap" id="app" hidden>
-  <header class="top"><div><h1>Dompet Rapi</h1><span class="sync" id="sync"></span></div><div class="hbtns"><button class="ghost" id="exportBtn">Ekspor ke Excel</button>
+  <header class="top"><div><h1>Catatan Keuangan</h1><span class="clock num" id="clock"></span><span class="sync" id="sync"></span></div><div class="hbtns"><button class="ghost" id="exportBtn" title="Ekspor ke Excel">📊 Excel</button>
     <div class="menuwrap"><button class="ghost" id="moreBtn" aria-haspopup="true" aria-expanded="false" aria-label="Menu lainnya">⋮</button>
       <div class="menu" id="moreMenu" hidden>
         <button id="budgetBtn">💵 Atur anggaran bulanan</button>
@@ -147,7 +159,7 @@ a.calbtn{all:unset;cursor:pointer;font-size:12.5px;font-weight:600;padding:5px 1
         <button id="logoutBtn" class="danger">Keluar</button>
       </div></div>
     <input type="file" id="importFile" accept=".json,application/json" hidden></div></header>
-  <div class="tabs" role="tablist">
+  <div class="tabs" role="tablist" id="tabs"><span class="ind" aria-hidden="true"></span>
     <button role="tab" id="tab-debt" aria-selected="true">Hutang<span class="dot" id="dueBadge" hidden></span></button>
     <button role="tab" id="tab-exp" aria-selected="false">Pengeluaran</button>
   </div>
@@ -161,7 +173,7 @@ a.calbtn{all:unset;cursor:pointer;font-size:12.5px;font-weight:600;padding:5px 1
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, browserPopupRedirectResolver, getRedirectResult, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 const CATS=[
   {id:'makan',n:'Makan & minum',c:'#E07A3F'},{id:'transport',n:'Transportasi',c:'#3B7DD8'},
@@ -209,7 +221,8 @@ const firebaseConfig = {
 const fbApp=initializeApp(firebaseConfig);
 let fs;
 try{fs=initializeFirestore(fbApp,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})})}catch(e){fs=getFirestore(fbApp)}
-const auth=getAuth(fbApp);
+const auth=initializeAuth(fbApp,{persistence:[indexedDBLocalPersistence,browserLocalPersistence],popupRedirectResolver:browserPopupRedirectResolver});
+getRedirectResult(auth).catch(e=>{if(e&&e.code)toast('Login gagal: '+e.code)});
 
 /* ---------- storage ---------- */
 const ref=k=>doc(fs,'users',uid,'dompet',k);
@@ -272,7 +285,7 @@ function renderDebts(){
 function calUrl(x){
   const d=x.due.replace(/-/g,'');const left=x.amount-(x.paid||0);
   const t=(x.dir==='out'?'Bayar hutang ke ':'Tagih piutang dari ')+x.name+' '+rp(left);
-  const det='Jatuh tempo '+niceDate(x.due)+(x.note?'\n'+x.note:'')+'\n\nDicatat di Dompet Rapi: '+location.href;
+  const det='Jatuh tempo '+niceDate(x.due)+(x.note?'\n'+x.note:'')+'\n\nDicatat di Catatan Keuangan: '+location.href;
   return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent(t)+'&dates='+d+'T090000/'+d+'T093000&ctz=Asia/Jakarta&details='+encodeURIComponent(det);
 }
 function itemHTML(x){
@@ -464,7 +477,7 @@ async function exportXlsx(){
   const ws3=XLSX.utils.aoa_to_sheet(dh); ws3['!cols']=[{wch:16},{wch:20},{wch:14},{wch:16},{wch:14},{wch:12},{wch:20},{wch:28}];
   XLSX.utils.book_append_sheet(wb,ws3,'Hutang');
   const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
-  saveFile('Dompet-Rapi-'+BULAN[m-1]+'-'+y+'.xlsx',new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));toast('File Excel diunduh');
+  saveFile('Catatan-Keuangan-'+BULAN[m-1]+'-'+y+'.xlsx',new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));toast('File Excel diunduh');
 }
 $('exportBtn').onclick=exportXlsx;
 
@@ -473,12 +486,12 @@ async function backupJson(){
   try{const snap=await getDocs(collection(fs,'users',uid,'dompet'));snap.forEach(d=>{if(d.id.startsWith('exp-')){const v=d.data();if(v.items&&v.items.length)out.expenses[d.id.slice(4)]=v.items}})}catch(e){}
   Object.entries(state.months).forEach(([m,v])=>{if(v.length)out.expenses[m]=v});
   const d=new Date();
-  saveFile('dompet-rapi-backup-'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.json',new Blob([JSON.stringify(out,null,2)],{type:'application/json'}));
+  saveFile('catatan-keuangan-backup-'+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+'.json',new Blob([JSON.stringify(out,null,2)],{type:'application/json'}));
   toast('Backup diunduh');
 }
 async function importJson(file){
   let data;try{data=JSON.parse(await file.text())}catch(e){toast('File backup tidak valid');return}
-  if(!data||data.app!=='dompet-rapi'){toast('Ini bukan file backup Dompet Rapi');return}
+  if(!data||data.app!=='dompet-rapi'){toast('Ini bukan file backup Catatan Keuangan');return}
   const nM=Object.keys(data.expenses||{}).length;
   if(!confirm('Impor '+(data.debts||[]).length+' catatan hutang dan pengeluaran '+nM+' bulan? Data yang sudah ada tidak dihapus, hanya digabung.'))return;
   const ids=new Set(state.debts.map(x=>x.id));(data.debts||[]).forEach(x=>{if(!ids.has(x.id))state.debts.push(x)});
@@ -500,8 +513,21 @@ function render(){
   $('fab').textContent=tab==='debt'?'+ Catat hutang':'+ Catat pengeluaran';
   renderDebts(); renderExp();
 }
-$('tab-debt').onclick=()=>{tab='debt';render()};
-$('tab-exp').onclick=()=>{tab='exp';render()};
+function switchTab(t){
+  if(t===tab)return;
+  tab=t;render();
+  $('tabs').dataset.tab=t;
+  const v=$(t==='exp'?'view-exp':'view-debt');
+  v.classList.remove('enter-r','enter-l');void v.offsetWidth;
+  v.classList.add(t==='exp'?'enter-r':'enter-l');
+  v.addEventListener('animationend',()=>v.classList.remove('enter-r','enter-l'),{once:true});
+}
+$('tab-debt').onclick=()=>switchTab('debt');
+$('tab-exp').onclick=()=>switchTab('exp');
+/* ---------- jam ---------- */
+const HARI=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+function tick(){const d=new Date();const el=$('clock');if(el)el.innerHTML='<span>'+HARI[d.getDay()]+', '+d.getDate()+' '+BULAN[d.getMonth()]+' '+d.getFullYear()+'</span> <span>• '+String(d.getHours()).padStart(2,'0')+'.'+String(d.getMinutes()).padStart(2,'0')+'.'+String(d.getSeconds()).padStart(2,'0')+'</span>'}
+tick();setInterval(tick,1000);
 $('fab').onclick=()=>tab==='debt'?openDebtSheet():openExpSheet();
 
 let swReg=null;
@@ -532,7 +558,7 @@ $('notifBtn').onclick=async()=>{
   if(Notification.permission==='denied'){toast('Notifikasi diblokir. Izinkan lewat pengaturan situs di browser.');return}
   if(Notification.permission!=='granted'){const p=await Notification.requestPermission();notifLabel();if(p!=='granted'){toast('Izin notifikasi tidak diberikan');return}}
   const sum=dueSummary();
-  await showNotif(sum?sum.title:'Notifikasi Dompet Rapi aktif',sum?sum.body:'Anda akan diingatkan saat ada hutang yang jatuh tempo dalam 3 hari.');
+  await showNotif(sum?sum.title:'Notifikasi Catatan Keuangan aktif',sum?sum.body:'Anda akan diingatkan saat ada hutang yang jatuh tempo dalam 3 hari.');
   toast('Notifikasi aktif');
 };
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&uid)checkDueNotif()});
@@ -552,6 +578,7 @@ $('loginBtn').onclick=async()=>{
   }
 };
 onAuthStateChanged(auth,async user=>{
+  $('splash').hidden=true;
   if(user){
     uid=user.uid;$('login').hidden=true;$('app').hidden=false;$('fab').hidden=false;
     $('sync').textContent=user.email||'Tersinkron';
